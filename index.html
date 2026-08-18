@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="pl" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROZKŁADAK - Inteligentna Optymalizacja Załadunku Palet 3D</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Three.js for 3D Pallet Showcase -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+      :root {
+        --paper: #F1ECE1;
+        --card: #FBF9F4;
+        --ink: #23201B;
+        --ink-soft: #5B5647;
+        --wood: #A9713F;
+        --wood-dark: #7C5029;
+        --steel: #3F5561;
+        --steel-dark: #2C3E48;
+        --safety: #E8A93B;
+        --safety-dark: #C6862A;
+        --danger: #B14A3D;
+        --danger-bg: #FBEEEC;
+        --line: #DCD2BC;
+        --line-soft: #E9E1CE;
+        --disabled-bg: #F0ECDF;
+        --radius: 10px;
+        --font-display: 'Space Grotesk', 'Inter', sans-serif;
+        --font-body: 'Inter', system-ui, sans-serif;
+        --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+      }
+
+      * { box-sizing: border-box; }
+      
+      body {
+        background-color: var(--paper);
+        color: var(--ink);
+        font-family: var(--font-body);
+        font-size: 14px;
+        line-height: 1.5;
+        overflow-x: hidden;
+      }
+
+      h1, h2, h3, h4, h5, .font-display {
+        font-family: var(--font-display);
+      }
+
+      .font-mono {
+        font-family: var(--font-mono);
+      }
+
+      /* Custom scrollbars */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--paper);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--line);
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--steel);
+      }
+
+      .industrial-card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: 0 2px 8px rgba(35, 32, 27, 0.04);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+      }
+
+      .industrial-card:hover {
+        border-color: var(--wood);
+      }
+
+      .btn-safety {
+        background-color: var(--safety);
+        color: var(--ink);
+        font-family: var(--font-display);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        border-radius: var(--radius);
+        box-shadow: 0 3px 0 var(--safety-dark);
+        transition: all 0.15s ease;
+      }
+
+      .btn-safety:hover {
+        background-color: #f0b654;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 0 var(--safety-dark);
+      }
+
+      .btn-safety:active {
+        transform: translateY(2px);
+        box-shadow: 0 1px 0 var(--safety-dark);
+      }
+
+      .btn-steel {
+        background-color: var(--steel);
+        color: #ffffff;
+        font-family: var(--font-display);
+        font-weight: 600;
+        border-radius: var(--radius);
+        box-shadow: 0 3px 0 var(--steel-dark);
+        transition: all 0.15s ease;
+      }
+
+      .btn-steel:hover {
+        background-color: #4a6371;
+        transform: translateY(-1px);
+      }
+
+      .badge-wood {
+        background-color: #F3EBDD;
+        color: var(--wood-dark);
+        border: 1px solid var(--line);
+      }
+
+      .badge-steel {
+        background-color: #E6ECF0;
+        color: var(--steel-dark);
+        border: 1px solid #C4D3DC;
+      }
+
+      .tag-safety {
+        background-color: rgba(232, 169, 59, 0.2);
+        color: #8C590E;
+        border: 1px solid var(--safety);
+      }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+    <!-- NAVIGATION BAR -->
+    <header class="sticky top-0 z-50 bg-[var(--card)]/90 backdrop-blur-md border-b border-[var(--line)]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-18 py-3">
+                
+                <!-- Brand logo -->
+                <a href="#" class="flex items-center space-x-3 group">
+                    <div class="w-10 h-10 rounded-lg bg-[var(--safety)] flex items-center justify-center font-bold text-[var(--ink)] shadow-[0_2px_0_var(--safety-dark)] group-hover:rotate-3 transition-transform">
+                        <i data-lucide="box" class="w-6 h-6 stroke-[2.5]"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="font-display font-extrabold text-xl tracking-tight text-[var(--ink)]">ROZKŁADAK</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded font-mono font-bold uppercase tag-safety">System V2.4</span>
+                        </div>
+                        <p class="text-[11px] text-[var(--ink-soft)] uppercase tracking-wider font-semibold">Planer Załadunku i Pakowania Palet 3D</p>
+                    </div>
+                </a>
+
+                <!-- Desktop Navigation Links -->
+                <nav class="hidden md:flex items-center space-x-1 font-medium text-xs">
+                    <a href="#features" class="px-3.5 py-2 rounded-lg text-[var(--ink-soft)] hover:text-[var(--ink)] hover:bg-[var(--line-soft)] transition">Funkcje Algorytmu</a>
+                    <a href="#roi" class="px-3.5 py-2 rounded-lg text-[var(--ink-soft)] hover:text-[var(--ink)] hover:bg-[var(--line-soft)] transition">Kalkulator Zysku</a>
+                    <a href="#workflow" class="px-3.5 py-2 rounded-lg text-[var(--ink-soft)] hover:text-[var(--ink)] hover:bg-[var(--line-soft)] transition">Przebieg Pracy</a>
+                    <a href="#faq" class="px-3.5 py-2 rounded-lg text-[var(--ink-soft)] hover:text-[var(--ink)] hover:bg-[var(--line-soft)] transition">FAQ</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 space-y-16 py-8">
+
+        <!-- HERO SECTION -->
+        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+                
+                <!-- Hero Text Left (7 Cols) -->
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full badge-wood text-xs font-semibold">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-[var(--wood)]"></i>
+                        <span>Gotowy algorytm układa palety w ułamku sekundy</span>
+                    </div>
+
+                    <h1 class="text-3xl sm:text-5xl font-black text-[var(--ink)] leading-[1.15] tracking-tight">
+                        Optymalizacja układu palet z bezbłędną <span class="bg-[var(--safety)] px-2 py-0.5 rounded shadow-[0_3px_0_var(--safety-dark)]">precyzją 3D</span>
+                    </h1>
+
+                    <p class="text-base text-[var(--ink-soft)] leading-relaxed max-w-2xl font-normal">
+                        <strong>ROZKŁADAK</strong> automatycznie dobiera pudła zbiorcze, pozycje z katalogu, profile aluminiowe oraz duże gabaryty. Przelicza wysokość stosu, udźwig, dopasowuje ramki nastawne i podpowiada piętrowanie palet.
+                    </p>
+
+                    <!-- Core Metrics Badges -->
+                    <div class="grid grid-cols-3 gap-3 pt-2 max-w-xl">
+                        <div class="p-3 rounded-lg border border-[var(--line)] bg-[var(--card)] space-y-1">
+                            <div class="text-xl font-bold font-mono text-[var(--steel)]">0.2s</div>
+                            <div class="text-[11px] text-[var(--ink-soft)] font-medium leading-tight">Czas kalkulacji układu</div>
+                        </div>
+                        <div class="p-3 rounded-lg border border-[var(--line)] bg-[var(--card)] space-y-1">
+                            <div class="text-xl font-bold font-mono text-[var(--wood-dark)]">+28%</div>
+                            <div class="text-[11px] text-[var(--ink-soft)] font-medium leading-tight">Lepsza gęstość załadunku</div>
+                        </div>
+                        <div class="p-3 rounded-lg border border-[var(--line)] bg-[var(--card)] space-y-1">
+                            <div class="text-xl font-bold font-mono text-[var(--safety-dark)]">100%</div>
+                            <div class="text-[11px] text-[var(--ink-soft)] font-medium leading-tight">Bezpieczeństwo ramek</div>
+                        </div>
+                    </div>
+
+                    <!-- CTA Buttons -->
+                    <div class="flex flex-wrap items-center gap-4 pt-4">
+                        <a href="#features" class="px-6 py-3.5 btn-steel text-sm flex items-center space-x-2">
+                            <i data-lucide="layers" class="w-4 h-4"></i>
+                            <span>Poznaj Wszystkie Moduły</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Hero Graphic Right / Visual Mockup (5 Cols) -->
+                <div class="lg:col-span-5">
+                    <div class="industrial-card p-5 space-y-4 relative overflow-hidden bg-gradient-to-b from-[var(--card)] to-[var(--paper)]">
+                        <div class="flex items-center justify-between border-b border-[var(--line-soft)] pb-3">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-3 h-3 rounded-full bg-[var(--danger)] inline-block"></span>
+                                <span class="w-3 h-3 rounded-full bg-[var(--safety)] inline-block"></span>
+                                <span class="w-3 h-3 rounded-full bg-[var(--steel)] inline-block"></span>
+                                <span class="font-mono text-xs font-semibold text-[var(--ink-soft)] ml-2">ROZKŁADAK_ENGINE.exe</span>
+                            </div>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--line-soft)] text-[var(--ink-soft)]">STATUS: READY</span>
+                        </div>
+
+                        <!-- Mini Interactive Code / Rules Preview -->
+                        <div class="space-y-3 font-mono text-xs">
+                            <div class="p-3 rounded bg-[#1e242b] text-slate-200 space-y-1.5 shadow-inner">
+                                <div class="text-amber-400 font-semibold">// Automatyczny wybór pojemników:</div>
+                                <div class="text-emerald-400">✓ Towar "GOLFKARTON 90x80" ➔ Karton zbiorczy (105 szt/pudło)</div>
+                                <div class="text-sky-300">✓ Towar "GRID 2.2 ZESTAW" ➔ Duże pudło na paletę</div>
+                                <div class="text-amber-300">✓ Profil "ALU 80x40" (1150mm) ➔ Wiązka profilowa</div>
+                                <div class="text-slate-400 pt-1 text-[11px] border-t border-slate-700">
+                                    [ALGORITHM]: Wykryto nakładanie ➔ Dokładanie ramki nastawnej (200mm) + Piętrowanie palety #2.
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 text-[11px]">
+                                <div class="p-2.5 rounded bg-[var(--paper)] border border-[var(--line)] flex items-center justify-between">
+                                    <span class="text-[var(--ink-soft)]">Dostępne Euro-Palety:</span>
+                                    <strong class="font-mono text-[var(--ink)]">1200 x 800 mm</strong>
+                                </div>
+                                <div class="p-2.5 rounded bg-[var(--paper)] border border-[var(--line)] flex items-center justify-between">
+                                    <span class="text-[var(--ink-soft)]">Max wys. stosu:</span>
+                                    <strong class="font-mono text-[var(--steel)]">2200 mm</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-amber-500/10 rounded-lg border border-[var(--safety)] flex items-center space-x-3 text-xs">
+                            <i data-lucide="shield-check" class="w-5 h-5 text-[var(--safety-dark)] flex-shrink-0"></i>
+                            <p class="text-[var(--ink)] font-medium">
+                                Pełny zapis historii w pamięci przeglądarki (LocalStorage) oraz natychmiastowy import plików Excel/JSON.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SECTION: FEATURES & CAPABILITIES -->
+        <section id="features" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 scroll-mt-24">
+            <div class="text-center max-w-3xl mx-auto space-y-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-[var(--wood-dark)] badge-wood px-3 py-1 rounded-full">Dedykowane Funkcje</span>
+                <h2 class="text-3xl font-extrabold text-[var(--ink)]">Dlaczego ROZKŁADAK to niezastąpione narzędzie?</h2>
+                <p class="text-sm text-[var(--ink-soft)]">Inżynieryjne podejście do pakowania eliminujące błędy ludzkie i uszkodzenia w transporcie.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <!-- Feature 1 -->
+                <div class="industrial-card p-6 space-y-3">
+                    <div class="w-10 h-10 rounded-lg bg-[var(--safety)] flex items-center justify-center font-bold text-[var(--ink)] shadow-[0_2px_0_var(--safety-dark)]">
+                        <i data-lucide="boxes" class="w-5 h-5"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-[var(--ink)]">Miksowanie Opakowań</h3>
+                    <p class="text-xs text-[var(--ink-soft)] leading-relaxed">
+                        Program potrafi płynnie łączyć małe pudełka w kartonach zbiorczych z dużymi pudłami stojącymi bezpośrednio na palecie oraz długimi profilami.
+                    </p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="industrial-card p-6 space-y-3">
+                    <div class="w-10 h-10 rounded-lg bg-[var(--steel)] text-white flex items-center justify-center font-bold shadow-[0_2px_0_var(--steel-dark)]">
+                        <i data-lucide="layers" class="w-5 h-5"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-[var(--ink)]">Ramki & Piętrowanie</h3>
+                    <p class="text-xs text-[var(--ink-soft)] leading-relaxed">
+                        Algorytm wylicza, kiedy opłaca się założyć ramkę nastawną (np. 200mm) i postawić drugą paletę na pierwszej, bez ryzyka zgniecenia towaru.
+                    </p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="industrial-card p-6 space-y-3">
+                    <div class="w-10 h-10 rounded-lg bg-[var(--wood)] text-white flex items-center justify-center font-bold shadow-[0_2px_0_var(--wood-dark)]">
+                        <i data-lucide="book-marked" class="w-5 h-5"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-[var(--ink)]">Słownik Reguł Dopasowania</h3>
+                    <p class="text-xs text-[var(--ink-soft)] leading-relaxed">
+                        Automatyczne przypisywanie opakowań po fragmencie nazwy z pliku Excel. System zapamiętuje Twoje wybory i rozwija słownik samodzielnie.
+                    </p>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="industrial-card p-6 space-y-3">
+                    <div class="w-10 h-10 rounded-lg bg-[#E6ECF0] text-[var(--steel-dark)] flex items-center justify-center font-bold border border-[#C4D3DC]">
+                        <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-[var(--ink)]">Import / Eksport Excel & JSON</h3>
+                    <p class="text-xs text-[var(--ink-soft)] leading-relaxed">
+                        Błyskawiczne wczytywanie listy wysyłkowej z systemów ERP/WMS oraz eksport gotowych planów układu dla pracowników magazynu.
+                    </p>
+                </div>
+
+                <!-- Feature 5 -->
+                <div class="industrial-card p-6 space-y-3">
+                    <div class="w-10 h-10 rounded-lg bg-[#F3EBDD] text-[var(--wood-dark)] flex items-center justify-center font-bold border border-[var(--line)]">
+                        <i data-lucide="scale" class="w-5 h-5"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-[var(--ink)]">Kontrola Udźwigu i Wagi</h3>
+                    <p class="text-xs text-[var(--ink-soft)] leading-relaxed">
+                        Bieżąca weryfikacja maksymalnej wagi palety, wytrzymałości ścianek kartonów oraz wyznaczanie środka ciężkości ładunku.
+                    </p>
+                </div>
+
+                <!-- Feature 6 -->
+                <div class="industrial-card p-6 space-y-3">
+                    <div class="w-10 h-10 rounded-lg bg-[var(--safety)] text-[var(--ink)] flex items-center justify-center font-bold shadow-[0_2px_0_var(--safety-dark)]">
+                        <i data-lucide="hard-drive-upload" class="w-5 h-5"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-[var(--ink)]">Autosave w Przeglądarce</h3>
+                    <p class="text-xs text-[var(--ink-soft)] leading-relaxed">
+                        Pełna ochrona danych. Wszystkie wprowadzane ustawienia kartonów, palet i reguły są natychmiast zapamiętywane lokalnie (LocalStorage).
+                    </p>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SECTION: INTERACTIVE ROI CALCULATOR -->
+        <section id="roi" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-24">
+            <div class="industrial-card p-8 bg-gradient-to-br from-[var(--card)] via-[var(--paper)] to-[var(--card)] border border-[var(--line)]">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                    
+                    <div class="lg:col-span-5 space-y-4">
+                        <span class="text-xs font-bold uppercase tracking-wider text-[var(--steel)] font-mono">KALKULATOR EFEKTYWNOŚCI</span>
+                        <h2 class="text-2xl sm:text-3xl font-extrabold text-[var(--ink)]">
+                            Ile zaoszczędzisz stosując ROZKŁADAK?
+                        </h2>
+                        <p class="text-xs text-[var(--ink-soft)] leading-relaxed">
+                            Przesuń suwak i zobacz estymowane roczne oszczędności czasu pracy planistów magazynu oraz redukcję kosztów transportu.
+                        </p>
+
+                        <div class="space-y-4 pt-2">
+                            <div>
+                                <div class="flex justify-between text-xs font-bold text-[var(--ink)] mb-2">
+                                    <span>Liczba palet wysyłanych dziennie:</span>
+                                    <span id="roiPalletsVal" class="font-mono text-[var(--steel)] text-sm">25 palet</span>
+                                </div>
+                                <input type="range" id="roiSlider" min="5" max="200" value="25" oninput="calculateROI()" class="w-full accent-[var(--safety-dark)]">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-7">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div class="p-4 rounded-xl bg-[var(--paper)] border border-[var(--line)] space-y-1">
+                                <span class="text-[10px] uppercase font-bold text-[var(--ink-soft)]">Oszczędność czasu</span>
+                                <div id="roiHoursSaved" class="text-2xl font-bold font-mono text-[var(--steel)]">240 godz.</div>
+                                <span class="text-[11px] text-[var(--ink-soft)]">rocznie w magazynie</span>
+                            </div>
+
+                            <div class="p-4 rounded-xl bg-[var(--paper)] border border-[var(--line)] space-y-1">
+                                <span class="text-[10px] uppercase font-bold text-[var(--ink-soft)]">Mniejsza liczba palet</span>
+                                <div id="roiPalletsSaved" class="text-2xl font-bold font-mono text-[var(--wood-dark)]">180 palet</div>
+                                <span class="text-[11px] text-[var(--ink-soft)]">mniej do wysyłki/rok</span>
+                            </div>
+
+                            <div class="p-4 rounded-xl bg-amber-500/10 border border-[var(--safety)] space-y-1">
+                                <span class="text-[10px] uppercase font-bold text-[var(--safety-dark)]">Szacowany zysk</span>
+                                <div id="roiMoneySaved" class="text-2xl font-bold font-mono text-[var(--ink)]">28,500 PLN</div>
+                                <span class="text-[11px] text-[var(--ink-soft)]">szacunkowy zwrot/rok</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: WORKFLOW PROCESS -->
+        <section id="workflow" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 scroll-mt-24">
+            <div class="text-center max-w-3xl mx-auto space-y-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-[var(--steel)] badge-steel px-3 py-1 rounded-full">Prosty Proces</span>
+                <h2 class="text-3xl font-extrabold text-[var(--ink)]">Typowy Przebieg Pracy z Programem</h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                
+                <div class="industrial-card p-5 space-y-2 text-center relative">
+                    <span class="w-7 h-7 rounded-full bg-[var(--steel)] text-white font-mono font-bold text-xs inline-flex items-center justify-center">1</span>
+                    <h4 class="font-bold text-xs text-[var(--ink)] uppercase">Ustawienia</h4>
+                    <p class="text-[11px] text-[var(--ink-soft)]">Jednorazowa konfiguracja floty palet oraz wymiarów pudełek.</p>
+                </div>
+
+                <div class="industrial-card p-5 space-y-2 text-center relative">
+                    <span class="w-7 h-7 rounded-full bg-[var(--steel)] text-white font-mono font-bold text-xs inline-flex items-center justify-center">2</span>
+                    <h4 class="font-bold text-xs text-[var(--ink)] uppercase">Słownik</h4>
+                    <p class="text-[11px] text-[var(--ink-soft)]">Automatyczne dopasowanie nazwy z Excela do typu pojemnika.</p>
+                </div>
+
+                <div class="industrial-card p-5 space-y-2 text-center relative">
+                    <span class="w-7 h-7 rounded-full bg-[var(--steel)] text-white font-mono font-bold text-xs inline-flex items-center justify-center">3</span>
+                    <h4 class="font-bold text-xs text-[var(--ink)] uppercase">Lista Towarów</h4>
+                    <p class="text-[11px] text-[var(--ink-soft)]">Wpisz lub zaimportuj zamówienie z pliku Excel / JSON.</p>
+                </div>
+
+                <div class="industrial-card p-5 space-y-2 text-center relative bg-amber-500/5 border-[var(--safety)]">
+                    <span class="w-7 h-7 rounded-full bg-[var(--safety)] text-[var(--ink)] font-mono font-bold text-xs inline-flex items-center justify-center shadow-sm">4</span>
+                    <h4 class="font-bold text-xs text-[var(--ink)] uppercase">Oblicz Układ</h4>
+                    <p class="text-[11px] text-[var(--ink-soft)]">Algorytm tworzy optymalny układ przestrzenny 3D.</p>
+                </div>
+
+                <div class="industrial-card p-5 space-y-2 text-center relative">
+                    <span class="w-7 h-7 rounded-full bg-[var(--wood)] text-white font-mono font-bold text-xs inline-flex items-center justify-center">5</span>
+                    <h4 class="font-bold text-xs text-[var(--ink)] uppercase">Eksport</h4>
+                    <p class="text-[11px] text-[var(--ink-soft)]">Wydrukuj instrukcję 2D lub przekaż raport tekstowy magazynierowi.</p>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SECTION: FAQ -->
+        <section id="faq" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 scroll-mt-24">
+            <div class="text-center space-y-2">
+                <h2 class="text-2xl font-extrabold text-[var(--ink)]">Najczęściej Zadawane Pytania (FAQ)</h2>
+                <p class="text-xs text-[var(--ink-soft)]">Wszystko, co musisz wiedzieć o działaniu aplikacji ROZKŁADAK.</p>
+            </div>
+
+            <div class="space-y-3 font-sans">
+                
+                <details class="industrial-card p-4 group cursor-pointer">
+                    <summary class="font-bold text-xs text-[var(--ink)] flex items-center justify-between list-none">
+                        <span>Czy program wymaga instalacji na komputerze?</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-[var(--ink-soft)] group-open:rotate-180 transition-transform"></i>
+                    </summary>
+                    <p class="text-xs text-[var(--ink-soft)] mt-3 pt-2 border-t border-[var(--line-soft)] leading-relaxed">
+                        Nie! ROZKŁADAK działa w 100% w przeglądarce internetowej. Wszystkie kalkulacje wykonywane są na Twoim urządzeniu, a dane zapisują się w pamięci podręcznej (LocalStorage).
+                    </p>
+                </details>
+
+                <details class="industrial-card p-4 group cursor-pointer">
+                    <summary class="font-bold text-xs text-[var(--ink)] flex items-center justify-between list-none">
+                        <span>Jak algorytm radzi sobie z nietypowymi profilami aluminiowymi?</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-[var(--ink-soft)] group-open:rotate-180 transition-transform"></i>
+                    </summary>
+                    <p class="text-xs text-[var(--ink-soft)] mt-3 pt-2 border-t border-[var(--line-soft)] leading-relaxed">
+                        Dla profili wprowadzana jest ich długość w milimetrach oraz waga na metr bieżący. Program układa profile na spodzie palety lub tworzy specjalne wiązki boczne z uwzględnieniem obrysu Euro-palety.
+                    </p>
+                </details>
+
+                <details class="industrial-card p-4 group cursor-pointer">
+                    <summary class="font-bold text-xs text-[var(--ink)] flex items-center justify-between list-none">
+                        <span>Co się dzieje, gdy towar przekroczy dopuszczalny limit wagi?</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-[var(--ink-soft)] group-open:rotate-180 transition-transform"></i>
+                    </summary>
+                    <p class="text-xs text-[var(--ink-soft)] mt-3 pt-2 border-t border-[var(--line-soft)] leading-relaxed">
+                        Program natychmiast wyświetli ostrzeżenie i automatycznie podzieli ładunek na kolejną paletę, zachowując zbalansowany środek ciężkości na każdej z nich.
+                    </p>
+                </details>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="mt-16 bg-[var(--card)] border-t border-[var(--line)] py-8 text-xs text-[var(--ink-soft)]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center space-x-2">
+                <div class="w-6 h-6 rounded bg-[var(--safety)] flex items-center justify-center font-bold text-[var(--ink)] text-xs">R</div>
+                <span class="font-bold font-display text-[var(--ink)]">ROZKŁADAK V2.4</span>
+                <span>— Inteligentny Planer Załadunku Palet</span>
+            </div>
+            <p>© 2026 Wszelkie prawa zastrzeżone. System optymalizacji pakowania 3D.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // ROI Calculator Logic
+        function calculateROI() {
+            const val = parseInt(document.getElementById('roiSlider').value);
+            document.getElementById('roiPalletsVal').textContent = val + " palet";
+
+            const hoursSaved = Math.round(val * 9.6);
+            const palletsSaved = Math.round(val * 7.2);
+            const moneySaved = (hoursSaved * 50 + palletsSaved * 90).toLocaleString('pl-PL');
+
+            document.getElementById('roiHoursSaved').textContent = hoursSaved + " godz.";
+            document.getElementById('roiPalletsSaved').textContent = palletsSaved + " palet";
+            document.getElementById('roiMoneySaved').textContent = moneySaved + " PLN";
+        }
+
+        // Tab Switching Logic inside Demo Showcase
+        function switchDemoTab(tabId) {
+            document.querySelectorAll('.demo-tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.demo-tab-btn').forEach(btn => {
+                btn.classList.remove('bg-[var(--paper)]', 'text-[var(--ink)]', 'border', 'border-[var(--line)]', 'shadow-sm');
+                btn.classList.add('text-[var(--ink-soft)]');
+            });
+
+            const target = document.getElementById(tabId);
+            target.classList.remove('hidden');
+
+            const activeBtn = document.getElementById('btn-' + tabId);
+            activeBtn.classList.add('bg-[var(--paper)]', 'text-[var(--ink)]', 'border', 'border-[var(--line)]', 'shadow-sm');
+            activeBtn.classList.remove('text-[var(--ink-soft)]');
+
+            if (tabId === 'view-3d') {
+                onWindowResize3D();
+            } else if (tabId === 'view-2d') {
+                render2DLayerDemo();
+            }
+        }
+
+        // Scenario switching logic
+        let currentScenario = 'standard';
+
+        function changeDemoScenario(scen) {
+            currentScenario = scen;
+            document.querySelectorAll('.scenario-btn').forEach(b => {
+                b.classList.remove('bg-[var(--paper)]', 'text-[var(--ink)]', 'shadow-sm');
+                b.classList.add('bg-[var(--card)]', 'text-[var(--ink-soft)]');
+            });
+
+            const activeBtn = document.getElementById('btn-scen-' + scen);
+            activeBtn.classList.add('bg-[var(--paper)]', 'text-[var(--ink)]', 'shadow-sm');
+            activeBtn.classList.remove('bg-[var(--card)]', 'text-[var(--ink-soft)]');
+
+            const palletsEl = document.getElementById('demoStatPallets');
+            const weightEl = document.getElementById('demoStatWeight');
+            const volumeEl = document.getElementById('demoStatVolume');
+            const framesEl = document.getElementById('demoStatFrames');
+
+            if (scen === 'standard') {
+                palletsEl.textContent = '1 szt. (EUR-1)';
+                weightEl.textContent = '258.0 kg';
+                volumeEl.textContent = '88.4 %';
+                framesEl.textContent = 'Brak potrzeb';
+            } else if (scen === 'framed') {
+                palletsEl.textContent = '2 szt. (Piętrowane)';
+                weightEl.textContent = '482.5 kg';
+                volumeEl.textContent = '94.1 %';
+                framesEl.textContent = '1 szt. (200mm)';
+            } else {
+                palletsEl.textContent = '1 szt. (EUR-1 + Profile)';
+                weightEl.textContent = '315.0 kg';
+                volumeEl.textContent = '91.0 %';
+                framesEl.textContent = 'Brak (Spięcie)';
+            }
+
+            build3DPalletScene();
+            render2DLayerDemo();
+        }
+
+        // Render 2D Layer Scheme
+        function render2DLayerDemo() {
+            const layerVal = document.getElementById('demoLayerSlider').value;
+            document.getElementById('demoLayerVal').textContent = `Warstwa ${layerVal} z 3`;
+            document.getElementById('layerDetailNum').textContent = layerVal;
+
+            const grid = document.getElementById('grid2DContainer');
+            grid.innerHTML = '';
+
+            const countEl = document.getElementById('layerDetailCount');
+
+            if (currentScenario === 'standard') {
+                countEl.textContent = '6x Karton Zbiorczy GOLFKARTON';
+                for (let i = 0; i < 6; i++) {
+                    const box = document.createElement('div');
+                    box.className = 'w-[72px] h-[85px] bg-[#ee9b00] border border-[#b87800] text-white font-mono font-bold text-[10px] flex items-center justify-center rounded shadow-sm';
+                    box.textContent = 'Karton ' + (i + 1);
+                    grid.appendChild(box);
+                }
+            } else if (currentScenario === 'framed') {
+                countEl.textContent = '4x Duże Pudło GRID 2.2';
+                for (let i = 0; i < 4; i++) {
+                    const box = document.createElement('div');
+                    box.className = 'w-[110px] h-[65px] bg-[#ca6702] border border-[#964a00] text-white font-mono font-bold text-[10px] flex items-center justify-center rounded shadow-sm';
+                    box.textContent = 'GRID 2.2';
+                    grid.appendChild(box);
+                }
+            } else {
+                countEl.textContent = '2x Profile ALU + 4x Karton Zbiorczy';
+                for (let i = 0; i < 4; i++) {
+                    const box = document.createElement('div');
+                    box.className = 'w-[72px] h-[65px] bg-[#ee9b00] border border-[#b87800] text-white font-mono font-bold text-[9px] flex items-center justify-center rounded';
+                    box.textContent = 'Karton';
+                    grid.appendChild(box);
+                }
+                const prof = document.createElement('div');
+                prof.className = 'w-full h-[35px] bg-[#005f73] border border-[#003845] text-white font-mono font-bold text-[10px] flex items-center justify-center rounded mt-1';
+                prof.textContent = 'PROFIL ALU (1150 mm)';
+                grid.appendChild(prof);
+            }
+        }
+
+        // Copy Text Report Mock
+        function copyDemoReport() {
+            const txt = document.getElementById('demoReportText').innerText;
+            navigator.clipboard.writeText(txt).then(() => {
+                const btnTxt = document.getElementById('reportCopyTxt');
+                btnTxt.textContent = 'Skopiowano! ✓';
+                setTimeout(() => { btnTxt.textContent = 'Kopiuj Raport'; }, 2000);
+            });
+        }
+
+        /* THREE.JS 3D ENGINE INTEGRATION */
+        let scene3D, camera3D, renderer3D, palletGroup3D;
+        let isMouseDown3D = false;
+        let prevMousePos = { x: 0, y: 0 };
+
+        function init3DShowcase() {
+            const container = document.getElementById('canvas3DHolder');
+            if (!container) return;
+
+            scene3D = new THREE.Scene();
+            scene3D.background = new THREE.Color(0x111827);
+
+            camera3D = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera3D.position.set(2.8, 2.4, 3.4);
+            camera3D.lookAt(0, 0.4, 0);
+
+            renderer3D = new THREE.WebGLRenderer({ antialias: true });
+            renderer3D.setSize(container.clientWidth, container.clientHeight);
+            renderer3D.shadowMap.enabled = true;
+            container.appendChild(renderer3D.domElement);
+
+            // Ambient & Directional Lighting
+            const ambient = new THREE.AmbientLight(0xffffff, 0.75);
+            scene3D.add(ambient);
+
+            const sun = new THREE.DirectionalLight(0xffffff, 0.85);
+            sun.position.set(5, 10, 6);
+            sun.castShadow = true;
+            scene3D.add(sun);
+
+            // Ground grid line
+            const grid = new THREE.GridHelper(6, 20, 0xe8a93b, 0x374151);
+            grid.position.y = -0.01;
+            scene3D.add(grid);
+
+            palletGroup3D = new THREE.Group();
+            scene3D.add(palletGroup3D);
+
+            build3DPalletScene();
+
+            // Event Listeners for 3D Camera Orbit
+            container.addEventListener('mousedown', (e) => { isMouseDown3D = true; });
+            window.addEventListener('mouseup', () => { isMouseDown3D = false; });
+            container.addEventListener('mousemove', (e) => {
+                if (!isMouseDown3D) return;
+                const deltaX = e.clientX - prevMousePos.x;
+                const deltaY = e.clientY - prevMousePos.y;
+
+                palletGroup3D.rotation.y += deltaX * 0.01;
+                palletGroup3D.rotation.x += deltaY * 0.005;
+                palletGroup3D.rotation.x = Math.max(-0.4, Math.min(0.9, palletGroup3D.rotation.x));
+
+                prevMousePos = { x: e.clientX, y: e.clientY };
+            });
+
+            container.addEventListener('wheel', (e) => {
+                camera3D.position.z += e.deltaY * 0.002;
+                camera3D.position.z = Math.max(1.8, Math.min(6.5, camera3D.position.z));
+            });
+
+            window.addEventListener('resize', onWindowResize3D);
+            animate3D();
+        }
+
+        function createPalletMesh(y) {
+            const group = new THREE.Group();
+            const woodMat = new THREE.MeshStandardMaterial({ color: 0xA9713F, roughness: 0.8 });
+
+            // Bottom planks
+            for (let i = -0.5; i <= 0.5; i += 0.5) {
+                const plank = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.02, 0.1), woodMat);
+                plank.position.set(0, y + 0.01, i * 0.7);
+                group.add(plank);
+            }
+            // Support blocks
+            for (let x = -0.5; x <= 0.5; x += 0.5) {
+                for (let z = -0.35; z <= 0.35; z += 0.35) {
+                    const block = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.1), woodMat);
+                    block.position.set(x, y + 0.06, z);
+                    group.add(block);
+                }
+            }
+            // Top planks
+            for (let i = -0.55; i <= 0.55; i += 0.22) {
+                const plank = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.8), woodMat);
+                plank.position.set(i, y + 0.11, 0);
+                group.add(plank);
+            }
+            return group;
+        }
+
+        function build3DPalletScene() {
+            while (palletGroup3D.children.length > 0) {
+                palletGroup3D.remove(palletGroup3D.children[0]);
+            }
+
+            const p1 = createPalletMesh(0);
+            palletGroup3D.add(p1);
+
+            const yellowBoxMat = new THREE.MeshStandardMaterial({ color: 0xee9b00, roughness: 0.4 });
+            const bigBoxMat = new THREE.MeshStandardMaterial({ color: 0xca6702, roughness: 0.5 });
+            const profileMat = new THREE.MeshStandardMaterial({ color: 0x005f73, metalness: 0.7, roughness: 0.3 });
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0x2C3E48, metalness: 0.4, roughness: 0.4 });
+
+            if (currentScenario === 'standard') {
+                for (let x = -0.35; x <= 0.35; x += 0.36) {
+                    for (let z = -0.25; z <= 0.25; z += 0.26) {
+                        for (let layer = 0; layer < 3; layer++) {
+                            const box = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.22, 0.23), yellowBoxMat);
+                            box.position.set(x, 0.12 + 0.11 + layer * 0.23, z);
+                            palletGroup3D.add(box);
+                        }
+                    }
+                }
+            } else if (currentScenario === 'framed') {
+                // Bottom boxes
+                for (let x = -0.35; x <= 0.35; x += 0.36) {
+                    for (let z = -0.25; z <= 0.25; z += 0.26) {
+                        const box = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.22, 0.23), yellowBoxMat);
+                        box.position.set(x, 0.12 + 0.11, z);
+                        palletGroup3D.add(box);
+                    }
+                }
+                // Collar frame
+                const frameH = 0.2;
+                const frameY = 0.12 + 0.23 + frameH / 2;
+                const wallW = new THREE.Mesh(new THREE.BoxGeometry(1.22, frameH, 0.02), frameMat);
+                wallW.position.set(0, frameY, 0.41);
+                palletGroup3D.add(wallW);
+
+                const wallE = new THREE.Mesh(new THREE.BoxGeometry(1.22, frameH, 0.02), frameMat);
+                wallE.position.set(0, frameY, -0.41);
+                palletGroup3D.add(wallE);
+
+                // Stacked top pallet
+                const p2Y = frameY + frameH / 2;
+                palletGroup3D.add(createPalletMesh(p2Y));
+
+                // Big Boxes on Top
+                const g1 = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.32, 0.36), bigBoxMat);
+                g1.position.set(-0.28, p2Y + 0.12 + 0.16, 0);
+                palletGroup3D.add(g1);
+
+                const g2 = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.32, 0.36), bigBoxMat);
+                g2.position.set(0.28, p2Y + 0.12 + 0.16, 0);
+                palletGroup3D.add(g2);
+            } else {
+                // Scenario: Profiles & mixed
+                for (let x = -0.35; x <= 0.35; x += 0.36) {
+                    for (let z = -0.25; z <= 0.25; z += 0.26) {
+                        const box = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.22, 0.23), yellowBoxMat);
+                        box.position.set(x, 0.12 + 0.11, z);
+                        palletGroup3D.add(box);
+                    }
+                }
+                const prof1 = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.08, 0.15), profileMat);
+                prof1.position.set(0, 0.12 + 0.23 + 0.04, 0.25);
+                palletGroup3D.add(prof1);
+
+                const prof2 = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.08, 0.15), profileMat);
+                prof2.position.set(0, 0.12 + 0.23 + 0.04, -0.25);
+                palletGroup3D.add(prof2);
+            }
+
+            palletGroup3D.position.set(0, -0.3, 0);
+        }
+
+        function reset3DCamera() {
+            if (palletGroup3D) palletGroup3D.rotation.set(0, 0, 0);
+            if (camera3D) {
+                camera3D.position.set(2.8, 2.4, 3.4);
+                camera3D.lookAt(0, 0.4, 0);
+            }
+        }
+
+        function onWindowResize3D() {
+            const container = document.getElementById('canvas3DHolder');
+            if (!container || !renderer3D || !camera3D) return;
+            camera3D.aspect = container.clientWidth / container.clientHeight;
+            camera3D.updateProjectionMatrix();
+            renderer3D.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            if (!isMouseDown3D && palletGroup3D) {
+                palletGroup3D.rotation.y += 0.002;
+            }
+            if (renderer3D && scene3D && camera3D) {
+                renderer3D.render(scene3D, camera3D);
+            }
+        }
+
+        // Window onload initialization
+        window.onload = function() {
+            init3DShowcase();
+            calculateROI();
+        };
+    </script>
+</body>
+</html>
